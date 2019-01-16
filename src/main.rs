@@ -1,5 +1,5 @@
 /*
- * ephemeral_auth: A self contained 3rd party auth server for plug.dj
+ * sepha: A self contained 3rd party auth server for plug.dj
  * Copyright (C) 2019 Chip Reed
  *
  * This program is free software: you can redistribute it and/or modify

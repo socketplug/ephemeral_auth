@@ -1,5 +1,5 @@
 [package]
-name = "ephemeral_auth"
+name = "sepha"
 version = "0.1.0"
 authors = ["chip reed <chip@chip.sh>"]
 edition = "2018"
