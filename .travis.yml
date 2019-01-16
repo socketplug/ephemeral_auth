@@ -4,7 +4,7 @@ cache: cargo
 rust:
   - stable
   - beta
-  - night
+  - nightly
 
 os:
   - linux
