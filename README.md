@@ -1,4 +1,4 @@
-# sepha: socketplug ephemeral auth [![Build Status](https://travis-ci.org/socketplug/ephemeral_auth.svg?branch=master)](https://travis-ci.org/socketplug/ephemeral_auth)
+# sepha: socketplug ephemeral auth [![Build Status](https://travis-ci.org/socketplug/sepha.svg?branch=master)](https://travis-ci.org/socketplug/sepha)
 
 A self contained 3rd party auth server for plug.dj.  Please note that this is
 very proof of concept and some pretty shaky code (a lot of `.expects()`).
