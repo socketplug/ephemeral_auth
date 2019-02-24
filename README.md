@@ -99,10 +99,14 @@ post the authentication token to `/auth/verify` as a string in a JSON body.
 #### Returns 
 ```json
 {
-  "public_token": "<string>",
-  "secret": "<string>"
+  "verify": true
 }
 ```
+
+with `false` being a failed verified authentication token.
+
+
+---
 
 
 enjoy i guess idk if i'll make this higher quality anytime soon.
