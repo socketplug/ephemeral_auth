@@ -16,8 +16,50 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::config::Config;
+use crate::endpoints::{authorization, authorization::AuthorizationConfig};
+use lazy_static::lazy_static;
+use reqwest::Client;
+use warp::Filter;
+use std::path::PathBuf;
+use std::env;
+
+mod config;
+mod endpoints;
+mod util;
+
+lazy_static! {
+    static ref PRIVATE_KEY: Vec<u8> =
+        std::fs::read("private.der").expect("could not read key private.der");
+    static ref AUTHORIZATION_CONFIG: AuthorizationConfig<'static> = AuthorizationConfig {
+        private_key: &PRIVATE_KEY,
+        ..Default::default()
+    };
+    static ref VERIFY_CLIENT: Client = {
+        let config = Config::load(env::args().nth(1).map(PathBuf::from)).expect("Cannot get config");
+        let login = util::login(&config);
+        dbg!(&login);
+
+        Client::builder()
+            .default_headers(login.unwrap())
+            .build()
+            .expect("couldnt build async request client")
+    };
+}
+
 fn main() {
-    println!("Hello, world!");
+    // authorization routes
+    let authorization_router = authorization::init(&AUTHORIZATION_CONFIG)
+        .or(authorization::authenticate(
+            &AUTHORIZATION_CONFIG,
+            &VERIFY_CLIENT,
+        ))
+        .or(authorization::verify(&AUTHORIZATION_CONFIG));
+
+    // all routes
+    let router = authorization_router.or(endpoints::index());
+
+    warp::serve(router).run(([0, 0, 0, 0], 8080));
 }
 
 #[cfg(test)]
