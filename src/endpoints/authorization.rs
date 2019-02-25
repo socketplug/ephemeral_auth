@@ -20,6 +20,7 @@ use crate::util;
 use crate::util::random_string;
 use crate::util::PlugResponse;
 use chrono::Utc;
+use http::StatusCode;
 use jsonwebtoken::Validation;
 use jsonwebtoken::{decode, encode, Header};
 use reqwest::Client;
@@ -77,16 +78,22 @@ struct AuthenticationClaims<'a> {
     id: u64,
 }
 
+#[derive(Serialize)]
+struct ErrorMessage {
+    error: &'static str,
+}
+
 /// Endpoint to start authentication process
 ///
 /// Url is `/<AuthorizationConfig.base_path>/init/:id` where `:id` is a u64
 pub(crate) fn init(
     config: &'static AuthorizationConfig,
 ) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
-    #[derive(Debug, Deserialize, Serialize)]
-    struct Return {
-        public: String,
-        secret: String,
+    #[derive(Serialize)]
+    #[serde(untagged)]
+    enum Return {
+        Error(ErrorMessage),
+        Success { public: String, secret: String },
     }
 
     warp::get2()
@@ -99,8 +106,7 @@ pub(crate) fn init(
 
             // how long the token is valid for
             let exp = Utc::now() + Duration::minutes(5);
-
-            let secret_token = encode(
+            let jwt = encode(
                 &Header::default(),
                 &InitClaims {
                     exp: exp.timestamp(),
@@ -110,13 +116,25 @@ pub(crate) fn init(
                     public_token: Cow::Borrowed(&public_token),
                 },
                 &config.private_key,
-            )
-            .expect("authorization: action_create: could not create jwt");
+            );
 
-            warp::reply::json(&Return {
-                public: public_token,
-                secret: secret_token,
-            })
+            let (reply, status_code) = match jwt {
+                Ok(secret_token) => (
+                    warp::reply::json(&Return::Success {
+                        public: public_token,
+                        secret: secret_token,
+                    }),
+                    StatusCode::OK,
+                ),
+                Err(_) => (
+                    warp::reply::json(&Return::Error(ErrorMessage {
+                        error: "auth_init_failed_creating_jwt",
+                    })),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ),
+            };
+
+            warp::reply::with_status(reply, status_code)
         })
 }
 
@@ -233,16 +251,21 @@ pub(crate) fn verify(
         .and(warp::path::end())
         .and(util::body_form_or_json(1024 * 2))
         .map(move |body: Body| {
-            warp::reply::json(&Return {
-                valid: decode::<AuthenticationClaims>(
-                    &body.token,
-                    &config.private_key,
-                    &Validation {
-                        sub: Some("auth_token".to_string()),
-                        ..Default::default()
-                    },
-                )
-                .is_ok(),
-            })
+            let jwt = decode::<AuthenticationClaims>(
+                &body.token,
+                &config.private_key,
+                &Validation {
+                    sub: Some("auth_token".to_string()),
+                    ..Default::default()
+                },
+            );
+
+            let reply = warp::reply::json(&Return { valid: jwt.is_ok() });
+            let status_code = match jwt {
+                Ok(_) => StatusCode::OK,
+                Err(_) => StatusCode::FORBIDDEN,
+            };
+
+            warp::reply::with_status(reply, status_code)
         })
 }
