@@ -85,7 +85,7 @@ pub(crate) fn init(
 ) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Deserialize, Serialize)]
     struct Return {
-        public_token: String,
+        public: String,
         secret: String,
     }
 
@@ -100,7 +100,7 @@ pub(crate) fn init(
             // how long the token is valid for
             let exp = Utc::now() + Duration::minutes(5);
 
-            let secret = encode(
+            let secret_token = encode(
                 &Header::default(),
                 &InitClaims {
                     exp: exp.timestamp(),
@@ -114,8 +114,8 @@ pub(crate) fn init(
             .expect("authorization: action_create: could not create jwt");
 
             warp::reply::json(&Return {
-                public_token,
-                secret,
+                public: public_token,
+                secret: secret_token,
             })
         })
 }
@@ -142,7 +142,7 @@ pub(crate) fn authenticate(
 
     #[derive(Debug, Serialize)]
     struct Return<'a> {
-        valid: Cow<'a, str>,
+        status: Cow<'a, str>,
         token: Option<String>,
     }
 
@@ -192,18 +192,18 @@ pub(crate) fn authenticate(
                         .expect("authorization: action_authenticate: could not create jwt");
 
                         warp::reply::json(&Return {
-                            valid: Cow::Borrowed("valid"),
+                            status: Cow::Borrowed("ok"),
                             token: Some(valid_token),
                         })
                     } else {
                         warp::reply::json(&Return {
-                            valid: Cow::Borrowed("invalid public_token"),
+                            status: Cow::Borrowed("invalid public_token"),
                             token: None,
                         })
                     }
                 }
                 Err(e) => warp::reply::json(&Return {
-                    valid: Cow::Owned(e.description().to_string()),
+                    status: Cow::Owned(e.description().to_string()),
                     token: None,
                 }),
             }
@@ -224,7 +224,7 @@ pub(crate) fn verify(
 
     #[derive(Debug, Serialize)]
     struct Return {
-        verify: bool,
+        valid: bool,
     }
 
     warp::post2()
@@ -234,7 +234,7 @@ pub(crate) fn verify(
         .and(util::body_form_or_json(1024 * 2))
         .map(move |body: Body| {
             warp::reply::json(&Return {
-                verify: decode::<AuthenticationClaims>(
+                valid: decode::<AuthenticationClaims>(
                     &body.token,
                     &config.private_key,
                     &Validation {

@@ -50,63 +50,121 @@ openssl rsa -aes256 -in private.pem -out secure_private.pem
 ## Using the server
 
 ### Init
-Receive a public token and a secret token from `/auth/init/<id>` where id is
-the user that you wish to validate.  Set the user's blurb on plug.dj to the
-public token (to be nice make sure to remember what their blurb was beforehand
-so that you can set it back after authenticating).
 
-#### Returns
+`/auth/init/<id>`
+
+
+Initializes the authentication process for the plug.dj user whose id was
+set in `<id>`.  Returns a public token, and a secret token which is encoded
+with the user's id and the public token.  The secret token is valid for 5
+minutes by default (and therefore also the public token).
+
+Make sure to keep the secret a secret (what a surprise!), and set the user's
+profile blurb to the public token before making an authenticate request.
+
+**Important:** Make sure to remember what the user's blurb was before you set
+it to the public token so that you can restore it after authenticating.
+
+
+#### Return Schema
 ```json
 {
-  "public_token": "<string>",
-  "secret": "<string>"
+  "public": "<public_token>",
+  "secret": "<secret_token>"
 }
 ```
+
+
+
+---
 
 
 
 ### Authenticate
-Post the secret token to `/auth/authenticate` as a string in a JSON body.
-The server will fetch the user's blurb from the plug.dj api, and compare it
-to the public_token encoded in your secret token.  The server will return
-a response similar to
 
-#### Returns 
-Failed authentication:
+`/auth/authenticate`
+
+
+The server will fetch the user's blurb from the plug.dj api, and compare it
+to the public_token encoded in your secret token.  Use this endpoint after you
+have set the the specified user id's blurb to the public token you received
+from the `/auth/init/<id>` endpoint.
+
+#### Post Schema
+Expects to be posted a key `secret` with either a form or json.  This should
+be the secret token received from the `/auth/init/<id>` endpoint
+
+`application/x-www-form-urlencoded`: `secret=<secret_token>`
+
+`application/json`:
 ```json
 {
-  "valid": "<why the authentication failed>",
+  "secret": "<secret_token>"
+}
+```
+
+
+#### Return Schema
+
+If successfully authenticated, you will receive an `"ok"` status and a token:
+```json
+{
+  "status": "ok",
+  "token": "<your_new_authenticated_token>"
+}
+```
+A valid authentication token will be valid for that id for 1 hour by default.
+
+
+If authentication failed for whatever reason, your token will be set to `null`
+and `status` will be set to the failure reason.
+```json
+{
+  "status": "<failure_reason>",
   "token": null
 }
 ```
 
-Successful authentication:
-```json
-{
-  "valid": "valid",
-  "token": "your new authenticated token"
-}
-```
 
-A valid authentication token will be valid for that id for 1 hour by default.
+
+---
 
 
 
 ### Verify
-To check if a token is valid when you already have an authentication token,
-post the authentication token to `/auth/verify` as a string in a JSON body.
 
-#### Returns 
+`/auth/verify`
+
+
+Used to verify if an `/auth/authenticate` endpoint token is valid.  This will
+reject invalid tokens, and tokens that have expired.
+
+
+#### Post Schema
+Expects to be posted a key `token` with either a form or json.
+
+`application/x-www-form-urlencoded`: `token=<auth_token>`
+
+`application/json`:
 ```json
 {
-  "verify": true
+  "token": "<auth_token>"
 }
 ```
 
-with `false` being a failed verified authentication token.
+
+#### Returns
+Returns json object with boolean key `valid` set to if the token was valid.
+```json
+{
+  "valid": true
+}
+```
+
 
 
 ---
+
 
 
 enjoy i guess idk if i'll make this higher quality anytime soon.
