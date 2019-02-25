@@ -131,6 +131,11 @@ pub(crate) fn authenticate(
     verify_client: &'static Client,
 ) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Deserialize)]
+    struct Body {
+        secret: String
+    }
+
+    #[derive(Debug, Deserialize)]
     struct BlurbData {
         blurb: String,
     }
@@ -145,11 +150,10 @@ pub(crate) fn authenticate(
         .and(warp::path(&config.base_path))
         .and(warp::path("authenticate"))
         .and(warp::path::end())
-        .and(warp::body::content_length_limit(1024)) // 1kb body limit
-        .and(warp::body::json())
-        .map(move |raw_claims: String| {
+        .and(util::body_form_or_json(1024))
+        .map(move |body: Body| {
             match decode::<InitClaims>(
-                &raw_claims,
+                &body.secret,
                 &config.private_key,
                 &Validation {
                     sub: Some("init".to_string()),
@@ -213,6 +217,11 @@ pub(crate) fn authenticate(
 pub(crate) fn verify(
     config: &'static AuthorizationConfig,
 ) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
+    #[derive(Debug, Deserialize)]
+    struct Body {
+        token: String,
+    }
+
     #[derive(Debug, Serialize)]
     struct Return {
         verify: bool,
@@ -222,12 +231,11 @@ pub(crate) fn verify(
         .and(warp::path(&config.base_path))
         .and(warp::path("verify"))
         .and(warp::path::end())
-        .and(warp::body::content_length_limit(1024)) // 1kb body limit
-        .and(warp::body::json())
-        .map(move |raw_claims: String| {
+        .and(util::body_form_or_json(1024 * 2))
+        .map(move |body: Body| {
             warp::reply::json(&Return {
                 verify: decode::<AuthenticationClaims>(
-                    &raw_claims,
+                    &body.token,
                     &config.private_key,
                     &Validation {
                         sub: Some("auth_token".to_string()),

@@ -22,7 +22,9 @@ use http::HeaderMap;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use reqwest::header::{COOKIE, SET_COOKIE};
+use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
+use warp::{Filter, Rejection};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct PlugResponse<T> {
@@ -91,4 +93,15 @@ pub(crate) fn login(config: &Config) -> Result<HeaderMap, reqwest::Error> {
     // bad "status": csrfTokenInvalid
 
     Ok(cookies)
+}
+
+/// Takes a body of the same type encoded with json or x-www-form-urlencoded
+pub(crate) fn body_form_or_json<T>(
+    byte_limit: u64,
+) -> impl Filter<Extract = (T,), Error = Rejection> + Copy
+where
+    T: DeserializeOwned + Send,
+{
+    warp::body::content_length_limit(byte_limit)
+        .and(warp::body::form().or(warp::body::json()).unify())
 }
