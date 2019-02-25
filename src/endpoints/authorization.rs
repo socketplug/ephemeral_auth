@@ -132,7 +132,7 @@ pub(crate) fn authenticate(
 ) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Deserialize)]
     struct Body {
-        secret: String
+        secret: String,
     }
 
     #[derive(Debug, Deserialize)]

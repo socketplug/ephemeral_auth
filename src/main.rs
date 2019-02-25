@@ -20,9 +20,9 @@ use crate::config::Config;
 use crate::endpoints::{authorization, authorization::AuthorizationConfig};
 use lazy_static::lazy_static;
 use reqwest::Client;
-use warp::Filter;
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
+use warp::Filter;
 
 mod config;
 mod endpoints;
@@ -36,7 +36,8 @@ lazy_static! {
         ..Default::default()
     };
     static ref VERIFY_CLIENT: Client = {
-        let config = Config::load(env::args().nth(1).map(PathBuf::from)).expect("Cannot get config");
+        let config =
+            Config::load(env::args().nth(1).map(PathBuf::from)).expect("Cannot get config");
         let login = util::login(&config);
         dbg!(&login);
 
