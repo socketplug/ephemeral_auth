@@ -17,11 +17,11 @@
  */
 
 use serde_derive::{Deserialize, Serialize};
-use warp::{filters::BoxedFilter, Filter, Reply};
+use warp::{Filter, Rejection, Reply};
 
 pub(crate) mod authorization;
 
-pub(crate) fn index() -> BoxedFilter<(impl Reply,)> {
+pub(crate) fn index() -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Deserialize, Serialize)]
     struct Return {
         status: &'static str,
@@ -30,5 +30,4 @@ pub(crate) fn index() -> BoxedFilter<(impl Reply,)> {
     warp::get2()
         .and(warp::path::end())
         .map(|| warp::reply::json(&Return { status: "ok" }))
-        .boxed()
 }

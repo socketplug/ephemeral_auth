@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::util;
 use crate::util::random_string;
 use crate::util::PlugResponse;
 use chrono::Utc;
@@ -26,7 +27,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::error::Error;
 use time::Duration;
-use warp::{filters::BoxedFilter, Filter, Reply};
+use warp::{Filter, Rejection, Reply};
 
 #[derive(Debug, Clone)]
 pub(crate) struct AuthorizationConfig<'a> {
@@ -79,7 +80,9 @@ struct AuthenticationClaims<'a> {
 /// Endpoint to start authentication process
 ///
 /// Url is `/<AuthorizationConfig.base_path>/init/:id` where `:id` is a u64
-pub(crate) fn init(config: &'static AuthorizationConfig) -> BoxedFilter<(impl Reply,)> {
+pub(crate) fn init(
+    config: &'static AuthorizationConfig,
+) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Deserialize, Serialize)]
     struct Return {
         public_token: String,
@@ -115,7 +118,6 @@ pub(crate) fn init(config: &'static AuthorizationConfig) -> BoxedFilter<(impl Re
                 secret,
             })
         })
-        .boxed()
 }
 
 /// Endpoint to authenticate a prepared account
@@ -127,7 +129,7 @@ pub(crate) fn init(config: &'static AuthorizationConfig) -> BoxedFilter<(impl Re
 pub(crate) fn authenticate(
     config: &'static AuthorizationConfig,
     verify_client: &'static Client,
-) -> BoxedFilter<(impl Reply,)> {
+) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Deserialize)]
     struct BlurbData {
         blurb: String,
@@ -202,14 +204,15 @@ pub(crate) fn authenticate(
                 }),
             }
         })
-        .boxed()
 }
 
 /// Endpoint to verify an authenticated account token
 ///
 /// Url is `/<AuthorizationConfig.base_path>/verify` with the authenticated account token
 /// received from authenticate as a JSON posted string.
-pub(crate) fn verify(config: &'static AuthorizationConfig) -> BoxedFilter<(impl Reply,)> {
+pub(crate) fn verify(
+    config: &'static AuthorizationConfig,
+) -> impl Filter<Extract = (impl Reply), Error = Rejection> + Copy {
     #[derive(Debug, Serialize)]
     struct Return {
         verify: bool,
@@ -234,5 +237,4 @@ pub(crate) fn verify(config: &'static AuthorizationConfig) -> BoxedFilter<(impl 
                 .is_ok(),
             })
         })
-        .boxed()
 }
